@@ -1,0 +1,162 @@
+---
+layout: default
+title: Parent Finder - DragonVale
+---
+
+<!-- Inclusion des scripts de données et de calcul -->
+<script src="{{ '/dragons.js' | relative_url }}"></script>
+<script src="{{ '/calc.js' | relative_url }}"></script>
+
+<style>
+  /* Styles personnalisés pour l'arbre et l'interface */
+  .finder-container {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 15px;
+  }
+  
+  .select-box {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+  }
+
+  .recipe-card {
+    background: #fff;
+    color: #333;
+    padding: 15px;
+    border-radius: 6px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  }
+
+  .tree-node {
+    border: 2px solid #555;
+    background: #f9f9f9;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 6px;
+  }
+
+  .tag-badge {
+    display: inline-block;
+    background: #4a90e2;
+    color: white;
+    padding: 3px 8px;
+    margin: 2px;
+    border-radius: 12px;
+    font-size: 12px;
+    text-transform: capitalize;
+  }
+
+  .tag-element { background: #e67e22; }
+  .tag-parent { background: #27ae60; }
+  .tag-special { background: #8e44ad; }
+</style>
+
+<h2>Parent Finder & Généalogie</h2>
+<p>Sélectionne un dragon pour découvrir les conditions nécessaires à sa reproduction :</p>
+
+<div class="finder-container">
+  <!-- Liste déroulante des dragons -->
+  <select id="dragon_select" class="select-box">
+    <option value="">-- Choisis un dragon --</option>
+  </select>
+
+  <!-- Zone d'affichage des résultats -->
+  <div id="result_area" style="display: none;">
+    <div class="recipe-card">
+      <h3 id="target_name" style="margin-top: 0; color: #2c3e50;"></h3>
+      <p><strong>Temps d'incubation :</strong> <span id="target_time"></span></p>
+
+      <hr>
+
+      <h4>Arbre / Conditions Requises :</h4>
+      <div id="tree_view"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+$(document).ready(function() {
+  // 1. Remplir la liste déroulante avec tous les dragons de dragons.js
+  if (typeof dragons !== 'undefined') {
+    var keys = Object.keys(dragons).sort(function(a, b) {
+      return dragons[a].name.localeCompare(dragons[b].name);
+    });
+
+    keys.forEach(function(key) {
+      $('#dragon_select').append(
+        $('<option>', { value: key, text: dragons[key].name })
+      );
+    });
+  } else {
+    alert("Erreur : dragons.js n'a pas pu être chargé.");
+  }
+
+  // 2. Déclencher la recherche lors du changement de sélection
+  $('#dragon_select').change(function() {
+    var selectedKey = $(this).val();
+    if (!selectedKey) {
+      $('#result_area').hide();
+      return;
+    }
+
+    // Appel de la fonction de recette
+    var recipe = get_parent_recipe(selectedKey);
+    displayRecipe(recipe);
+  });
+
+  // 3. Fonction pour afficher les résultats dans le HTML
+  function displayRecipe(recipe) {
+    if (!recipe) return;
+
+    $('#target_name').text(recipe.name);
+    $('#target_time').text(recipe.time);
+
+    var treeHtml = '';
+
+    // Si c'est un dragon primaire
+    if (recipe.special_conditions.includes("Primary Dragon (Market)")) {
+      treeHtml += '<div class="tree-node">🛒 <strong>Dragon Primaire :</strong> Achetable directement au marché.</div>';
+    } else {
+      treeHtml += '<div class="tree-node">';
+      
+      // Parents spécifiques requis
+      if (recipe.specific_parents.length > 0) {
+        treeHtml += '<p><strong>Parent(s) Obligatoire(s) :</strong><br>';
+        recipe.specific_parents.forEach(function(pKey) {
+          var pName = dragons[pKey] ? dragons[pKey].name : pKey;
+          treeHtml += '<span class="tag-badge tag-parent">🐉 ' + pName + '</span>';
+        });
+        treeHtml += '</p>';
+      }
+
+      // Éléments de base requis
+      if (recipe.elements.length > 0) {
+        treeHtml += '<p><strong>Éléments requis dans le croisement :</strong><br>';
+        recipe.elements.forEach(function(elem) {
+          treeHtml += '<span class="tag-badge tag-element">✨ ' + elem + '</span>';
+        });
+        treeHtml += '</p>';
+      }
+
+      // Conditions spéciales
+      if (recipe.special_conditions.length > 0) {
+        treeHtml += '<p><strong>Conditions Spéciales :</strong><br>';
+        recipe.special_conditions.forEach(function(cond) {
+          treeHtml += '<span class="tag-badge tag-special">⚠️ ' + cond + '</span>';
+        });
+        treeHtml += '</p>';
+      }
+
+      treeHtml += '</div>';
+    }
+
+    $('#tree_view').html(treeHtml);
+    $('#result_area').show();
+  }
+});
+</script>
